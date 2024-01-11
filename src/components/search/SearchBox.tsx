@@ -1,112 +1,147 @@
-import { usePopper } from 'react-popper'
-import { DropdownWindow } from './DropdownWindow'
-import { useEffect, useRef, useState } from 'react'
-import { IoIosSearch } from 'react-icons/io'
-import { CgSpinner } from 'react-icons/cg'
-import { dataModel } from '../../data/mockData'
-import { patternSearch } from '../../utils/patternSearch'
+import { usePopper } from 'react-popper';
+import { DropdownWindow } from './DropdownWindow';
+import { useEffect, useRef, useState } from 'react';
+import { IoIosSearch } from 'react-icons/io';
+import { CgSpinner } from 'react-icons/cg';
+import { dataModel } from '../../data/mockData';
+import { patternSearch } from '../../utils/patternSearch';
+import { useDebounce } from '../../hooks/useDebounce';
 
 type Props = {
     /** Input Label */
-    label: string
+    label: string;
     /** Input Description */
-    description?: string
+    description?: string;
     /** Search Mode: Async or Sync */
-    mode: 'async' | 'sync'
+    mode: 'async' | 'sync';
     /** Search on Focus */
-    searchOnFocus?: boolean
+    searchOnFocus?: boolean;
     /** Disabled input*/
-    disabled?: boolean
-}
+    disabled?: boolean;
+};
 
 export function SearchBox(props: Props) {
-    const [isLoading, setLoading] = useState<boolean>(false)
-    const [input, setInput] = useState<string>()
+    const [isLoading, setLoading] = useState<boolean>(false);
+    const [input, setInput] = useState<string>();
+    const debounceValue: string = useDebounce(input, 500);
 
     // Searching
-    const [isResultShown, setResultShown] = useState<boolean>(false)
-    const [searchResult, setSearchResult] = useState<dataModel[] | undefined>()
+    const [isResultShown, setResultShown] = useState<boolean>(false);
+    const [searchResult, setSearchResult] = useState<dataModel[] | undefined>();
 
     // Popper
-    const [referenceElement, setReferenceElement] = useState<HTMLDivElement | null>(null)
-    const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null)
+    const [referenceElement, setReferenceElement] =
+        useState<HTMLDivElement | null>(null);
+    const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(
+        null,
+    );
     const { styles, attributes } = usePopper(referenceElement, popperElement, {
-        placement: "bottom-start",
-    })
+        placement: 'bottom-start',
+    });
     const dropdownRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
     // Handle Click Event
     useEffect(() => {
-        let handler = (e: MouseEvent) => {
-            if (dropdownRef.current == null) return
-            if (inputRef.current == null) return
-            const isNotClickedOnResult = !dropdownRef.current.contains(e.target as Node)
-            const isNotClickedOnSearhInput = !inputRef.current.contains(e.target as Node)
+        function handler(e: MouseEvent): void {
+            if (dropdownRef.current == null) return;
+            if (inputRef.current == null) return;
+            const isNotClickedOnResult = !dropdownRef.current.contains(
+                e.target as Node,
+            );
+            const isNotClickedOnSearhInput = !inputRef.current.contains(
+                e.target as Node,
+            );
             if (isNotClickedOnResult && isNotClickedOnSearhInput) {
-                setResultShown(false)
+                setResultShown(false);
             }
         }
-        document.addEventListener("mousedown", handler)
-    }, [])
+        document.addEventListener('mousedown', handler);
+    }, []);
 
     // Async Search
     if (props.mode == 'async') {
-        const debounceTime = 500
+        // Enter Loading state when start typing.
         useEffect(() => {
-            setLoading(true)
+            setLoading(true);
+        }, [input]);
+        useEffect(() => {
             if (input == undefined || input == '') {
-                setResultShown(true)
-                setLoading(false)
-                return
+                setResultShown(true);
+                setLoading(false);
+                return;
             }
-            const getResult = setTimeout(() => {
-                setResultShown(true)
-                setSearchResult(patternSearch(input))
-                setLoading(false)
-            }, debounceTime)
-
-            return () => clearTimeout(getResult)
-        }, [input])
+            setResultShown(true);
+            setSearchResult(patternSearch(input));
+            setLoading(false);
+        }, [debounceValue]);
     }
 
     // Sync Search
     if (props.mode == 'sync') {
         useEffect(() => {
-            setSearchResult(patternSearch(input))
-        }, [input])
+            setSearchResult(patternSearch(input));
+        }, [input]);
     }
 
     return (
-        <div className="w-full flex-col text-left text-sm gap-y-1 font-sans">
+        <div className="w-full flex-col gap-y-1 text-left font-sans text-sm">
             <label className="text-gray-500">{props.label}</label>
-            <div ref={setReferenceElement} className='relative select-none'>
-                <div className='absolute left-2 top-2'>
+            <div ref={setReferenceElement} className="relative select-none">
+                <div className="absolute left-2 top-2">
                     <IoIosSearch size={22} color="gray" />
                 </div>
-                <input id="search-input"
+                <input
+                    id="search-input"
                     name="search-input"
                     ref={inputRef}
-                    className={`transition-all rounded-lg border-2 h-10 w-full pl-8 outline-teal-500 text-md ${props.disabled ? 'cursor-not-allowed' : null}`}
+                    className={`text-md h-10 w-full rounded-lg border-2 pl-8 outline-teal-500 transition-all ${
+                        props.disabled ? 'cursor-not-allowed' : null
+                    }`}
                     type="text"
                     placeholder={'Type to begin searching'}
-                    onChange={(e) => { setInput(e.target.value) }}
-                    onFocus={(e) => { if (props.searchOnFocus) { setInput(e.target.value); setResultShown(true) } }}
-                    onBlur={(e) => { if (isResultShown) { e.currentTarget.focus() } }}
+                    onChange={(e) => {
+                        setInput(e.target.value);
+                    }}
+                    onFocus={(e) => {
+                        if (props.searchOnFocus) {
+                            setInput(e.target.value);
+                            setResultShown(true);
+                        }
+                    }}
+                    onBlur={(e) => {
+                        if (isResultShown) {
+                            e.currentTarget.focus();
+                        }
+                    }}
                     disabled={props.disabled}
-                    spellCheck={false} />
-                {isLoading &&
-                    <div className='absolute top-2 right-2 animate-spin'>
+                    spellCheck={false}
+                />
+                {isLoading && (
+                    <div className="absolute right-2 top-2 animate-spin">
                         <CgSpinner size={22} color="gray" />
-                    </div>}
+                    </div>
+                )}
             </div>
             <label className="text-gray-500">{props.description}</label>
             <div ref={dropdownRef}>
-                <div 
+                <div
                     ref={setPopperElement}
-                    style={{ zIndex: 100, marginTop: 1, width: `${inputRef.current?.clientWidth}px`, ...styles.popper }} {...attributes.popper}>
-                    <DropdownWindow mode={props.mode} searchResult={searchResult} isResultShown={isResultShown}/>
+                    style={{
+                        zIndex: 100,
+                        marginTop: 1,
+                        width: `${inputRef.current?.clientWidth}px`,
+                        ...styles.popper,
+                    }}
+                    {...attributes.popper}
+                >
+                    <DropdownWindow
+                        mode={props.mode}
+                        searchResult={searchResult}
+                        isResultShown={isResultShown}
+                    />
                 </div>
             </div>
-        </div>)
+        </div>
+    );
 }

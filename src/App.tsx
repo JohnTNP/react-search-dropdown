@@ -1,11 +1,8 @@
-import './App.css'
-import { WelcomeCard } from './components/WelcomeCard'
+import "./App.css";
+import { WelcomeCard } from "./components/WelcomeCard";
 
 function App() {
-
-  return (
-    <WelcomeCard />
-  )
+    return <WelcomeCard />;
 }
 
-export default App
+export default App;
